@@ -6,21 +6,13 @@ const db = require('./src/config/dbConfig');
 
 const PORT = process.env.PORT || 5000;
 
-(async () => {
-  try {
-    // Test de connexion à la base via le pool exporté
-    const connection = await db.getConnection();
-    console.log("Connected to MySQL database!");
-    connection.release();
-
-    // Si la connexion fonctionne, on lance le serveur
+db.connect()
+  .then(() => {
+    console.log('Connected to the database');
     app.listen(PORT, () => {
-      console.log(`Auth service running on port ${PORT}`);
+      console.log(`Server is running on port ${PORT}`);
     });
-  } catch (err) {
-    console.error("Failed to connect to MySQL:", err);
-    process.exit(1); // empêche le lancement de l'app si la DB échoue
-  }
-})();
-
-//utiliser un revserse proxy pour le déploiement
+  })
+  .catch(err => {
+    console.error('Database connection error:', err);
+  });

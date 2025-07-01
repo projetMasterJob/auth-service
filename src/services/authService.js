@@ -1,23 +1,25 @@
-//gère la logique métier à la place du contrôleur
+const authModel = require('../models/authModel');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
-// Simulation d'une base de données en mémoire
-const users = []; // [{ id, email, passwordHash }]
-
-exports.registerUser = async (email, password) => {
-  const existingUser = users.find(u => u.email === email);
+exports.registerUser = async (first_name, last_name, email, password, address, phone) => {
+  //là il faut faire appel au modèle
+  const existingUser = await authModel.findByEmail(email);
   if (existingUser) {
     throw new Error('User already exists');
   }
 
-  const passwordHash = await bcrypt.hash(password, 10);
-  const newUser = { id: users.length + 1, email, passwordHash };
-  users.push(newUser);
+  const password_hash = await bcrypt.hash(password, 10);
+  //ici j'appelle le modèle
+  const newUser = authModel.createUser(first_name, last_name, email, password_hash, address, phone);
+  if(!newUser) {
+    throw new Error('Error while creating user');
+  }
+  return newUser;
 };
 
 exports.loginUser = async (email, password) => {
-  const user = users.find(u => u.email === email);
+  const user = authModel.findByEmail(email);
   if (!user) {
     throw new Error('Cannot find user');
   }
