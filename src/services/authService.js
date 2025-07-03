@@ -1,6 +1,7 @@
 const authModel = require('../models/authModel');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 exports.registerUser = async (first_name, last_name, email, password, address, phone) => {
   //là il faut faire appel au modèle
@@ -19,21 +20,39 @@ exports.registerUser = async (first_name, last_name, email, password, address, p
 };
 
 exports.loginUser = async (email, password) => {
-  const user = authModel.findByEmail(email);
+  const user = await authModel.findByEmail(email);
   if (!user) {
     throw new Error('Cannot find user');
   }
 
-  const validPassword = await bcrypt.compare(password, user.passwordHash);
+  const validPassword = await bcrypt.compare(password, user.password_hash);
   if (!validPassword) {
     throw new Error('Invalid credentials');
   }
 
-  const token = jwt.sign(
+  // Generate access token
+  const accessToken = jwt.sign(
     { id: user.id, email: user.email },
     process.env.JWT_SECRET,
-    { expiresIn: '1h' }
+    { expiresIn: '15m' }
   );
 
-  return token;
+  // Generate refresh token
+  const refreshToken = jwt.sign(
+    { id: user.id, email: user.email },
+    process.env.JWT_REFRESH_SECRET,
+    { expiresIn: '7d' }
+  );
+
+  const refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+  const addRefreshToken = await authModel.insertRefreshToken(refreshTokenHash, user.id);
+
+  if (addRefreshToken === 0) {
+    throw new Error('Error while updating refresh token');
+  }
+
+  return {
+    accessToken,
+    refreshToken
+  };
 };

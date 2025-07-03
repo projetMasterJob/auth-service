@@ -13,8 +13,10 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const token = await authService.loginUser(email, password);
-    res.status(200).json({ accessToken: token });
+    const { accessToken, refreshToken } = await authService.loginUser(email, password);
+    // Stocker le refreshToken dans la base de données
+    //const token = await authService.loginUser(email, password);
+    res.status(200).json({ accessToken: accessToken });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
