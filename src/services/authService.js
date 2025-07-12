@@ -1,7 +1,7 @@
 const authModel = require('../models/authModel');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const authToken = require('../middlewares/authToken');
 
 exports.registerUser = async (first_name, last_name, email, password, address, phone) => {
   //là il faut faire appel au modèle
@@ -30,19 +30,8 @@ exports.loginUser = async (email, password) => {
     throw new Error('Invalid credentials');
   }
 
-  // Generate access token
-  const accessToken = jwt.sign(
-    { id: user.id, email: user.email },
-    process.env.JWT_SECRET,
-    { expiresIn: '15m' }
-  );
-
-  // Generate refresh token
-  const refreshToken = jwt.sign(
-    { id: user.id, email: user.email },
-    process.env.JWT_REFRESH_SECRET,
-    { expiresIn: '7d' }
-  );
+  const accessToken = authToken.generateAccessToken(user);
+  const refreshToken = authToken.generateRefreshToken(user);
 
   const refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
   const addRefreshToken = await authModel.insertRefreshToken(refreshTokenHash, user.id);
