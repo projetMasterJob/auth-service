@@ -9,7 +9,8 @@ exports.findByEmail = async (email) => {
 exports.createUser = async(first_name, last_name, email, password_hash, address, phone) => {
   const query = `
     INSERT INTO users (first_name, last_name, email, password_hash, address, phone, role, created_at)
-    VALUES ($1, $2, $3, $4, $5, $6, 'user', NOW())
+    VALUES ($1, $2, $3, $4, $5, $6, 'user', NOW()) 
+    RETURNING id
   `;
   result = await pool.query(query, [first_name, last_name, email, password_hash, address, phone]);
   return result.rows[0];
@@ -22,5 +23,15 @@ exports.insertRefreshToken = async (refreshToken, userId) => {
     WHERE id = $2
   `;
   const result = await pool.query(query, [refreshToken, userId]);
+  return result.rowCount;
+}
+
+exports.insertTokenMail = async (emailTokenHash, tokenExpiresAt, userId) => {
+  const query = `
+    UPDATE users
+    SET email_token = $1, email_token_expires_at = $2
+    WHERE id = $3
+  `;
+  const result = await pool.query(query, [emailTokenHash, tokenExpiresAt, userId]);
   return result.rowCount;
 }

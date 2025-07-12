@@ -8,4 +8,7 @@ router.post('/register', authController.register);
 // Route pour la connexion
 router.post('/login', authController.login);
 
+// Route pour la vérification de l'email (à implémenter)
+// router.post('/verify-email', authController.verifyEmail);
+
 module.exports = router;
