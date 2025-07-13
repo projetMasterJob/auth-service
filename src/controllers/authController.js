@@ -22,7 +22,7 @@ exports.login = async (req, res) => {
   }
 };
 
-// Vérification de l'email (à implémenter)
+// Vérification de l'email
 exports.verifyEmail = async (req, res) => {
   try {
     const { token } = req.body;

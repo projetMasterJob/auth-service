@@ -18,7 +18,7 @@ exports.sendMail = async (to, subject, html) => {
   });
 };
 
-// Fonction spécialisée (ex: email de validation)
+// Envoie de l'email de validation
 exports.sendValidationEmail = async (to, validationUrl) => {
   const subject = "Valide ton inscription !";
   const html = `<p>Merci de cliquer <a href="${validationUrl}">ici</a> pour activer ton compte.</p>`;

@@ -6,13 +6,13 @@ exports.findByEmail = async (email) => {
   return result.rows[0];
 };
 
-exports.createUser = async(first_name, last_name, email, password_hash, address, phone) => {
+exports.createUser = async(first_name, last_name, email, password_hash, address, phone, emailTokenHash ,tokenExpiresAt) => {
   const query = `
-    INSERT INTO users (first_name, last_name, email, password_hash, address, phone, role, created_at)
-    VALUES ($1, $2, $3, $4, $5, $6, 'user', NOW()) 
+    INSERT INTO users (first_name, last_name, email, password_hash, address, phone, role, created_at, email_token, email_token_expires_at)
+    VALUES ($1, $2, $3, $4, $5, $6, 'user', NOW(), $7, $8) 
     RETURNING id
   `;
-  result = await pool.query(query, [first_name, last_name, email, password_hash, address, phone]);
+  result = await pool.query(query, [first_name, last_name, email, password_hash, address, phone, emailTokenHash ,tokenExpiresAt]);
   return result.rows[0];
 };
 
@@ -33,5 +33,34 @@ exports.insertTokenMail = async (emailTokenHash, tokenExpiresAt, userId) => {
     WHERE id = $3
   `;
   const result = await pool.query(query, [emailTokenHash, tokenExpiresAt, userId]);
+  return result.rowCount;
+}
+
+exports.findByEmailToken = async (emailTokenHash) => {
+  const query = `
+    SELECT id FROM users
+    WHERE email_token = $1 AND email_token_expires_at > NOW()
+  `;
+  const result = await pool.query(query, [emailTokenHash]);
+  return result.rows[0];
+}
+
+exports.deleteEmailToken = async (userId) => {
+  const query = `
+    UPDATE users
+    SET email_token = NULL, email_token_expires_at = NULL
+    WHERE id = $1
+  `;
+  const result = await pool.query(query, [userId]);
+  return result.rowCount;
+}
+
+exports.setUserAsVerified = async (userId) => {
+  const query = `
+    UPDATE users
+    SET is_verified = TRUE
+    WHERE id = $1
+  `;
+  const result = await pool.query(query, [userId]);
   return result.rowCount;
 }

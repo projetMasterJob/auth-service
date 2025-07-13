@@ -8,31 +8,27 @@ exports.registerUser = async (first_name, last_name, email, password, address, p
   //là il faut faire appel au modèle
   const existingUser = await authModel.findByEmail(email);
   if (existingUser) {
-    throw new Error('User already exists');
+    throw new Error('Email already exists');
   }
 
   const password_hash = await bcrypt.hash(password, 10);
-  //ici j'appelle le modèle
-  const newUser = await authModel.createUser(first_name, last_name, email, password_hash, address, phone);
-  if(!newUser) {
-    throw new Error('Error while creating user');
-  }
+  console.log('Password hashed successfully');
+
   const emailToken = crypto.randomBytes(32).toString('hex');
   const emailTokenHash = crypto.createHash('sha256').update(emailToken).digest('hex');
   const tokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-  const TokenInserted = await authModel.insertTokenMail(emailTokenHash, newUser.id, tokenExpiresAt);
-  if(!TokenInserted) {
-    throw new Error('Error while inserting email token');
-  }
+  console.log('Email token generated:', emailToken);
   
-  const validationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${emailToken}`;
-
-  try {
-    await authModel.insertTokenMail(emailTokenHash, newUser.id, tokenExpiresAt);
-  } catch (error) {
-    throw new Error('Failed to send validation email');
+  const newUser = await authModel.createUser(first_name, last_name, email, password_hash, address, phone, emailTokenHash ,tokenExpiresAt);
+  if(!newUser) {
+    throw new Error('Error while creating user');
   }
+  console.log('User created successfully:', newUser);
+
+  // Envoi de l'email de validation
+  const validationUrl = `${process.env.URL_VERIFY}/verify-email?token=${emailToken}`;
+  await mailer.sendValidationEmail(newUser.email, validationUrl);
+  console.log('Validation email sent to:', newUser.email);
 };
 
 exports.loginUser = async (email, password) => {
@@ -60,4 +56,15 @@ exports.loginUser = async (email, password) => {
     accessToken,
     refreshToken
   };
+};
+
+exports.verifyEmailToken = async (token) => {
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  const res = await authModel.findByEmailToken(tokenHash);
+  if (!res) {
+    throw new Error('Invalid or expired token');
+  }
+
+  await authModel.setUserAsVerified(record.user_id);
+  await authModel.deleteEmailToken(tokenHash);
 };
