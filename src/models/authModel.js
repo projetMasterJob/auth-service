@@ -6,7 +6,7 @@ exports.findByEmail = async (email) => {
   return result.rows[0];
 };
 
-exports.createUser = async(first_name, last_name, email, password_hash, address, phone, emailTokenHash ,tokenExpiresAt) => {
+exports.createUser = async(first_name, last_name, email, password_hash, address, phone, emailTokenHash, tokenExpiresAt) => {
   const query = `
     INSERT INTO users (first_name, last_name, email, password_hash, address, phone, role, created_at, email_token, email_token_expires_at)
     VALUES ($1, $2, $3, $4, $5, $6, 'user', NOW(), $7, $8) 

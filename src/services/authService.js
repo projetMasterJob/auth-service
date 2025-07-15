@@ -59,12 +59,15 @@ exports.loginUser = async (email, password) => {
 };
 
 exports.verifyEmailToken = async (token) => {
+  console.log('Verifying email token:', token);
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  console.log('Verifying email token:', tokenHash);
   const res = await authModel.findByEmailToken(tokenHash);
+  console.log('Token verification result:', res);
   if (!res) {
     throw new Error('Invalid or expired token');
   }
 
-  await authModel.setUserAsVerified(record.user_id);
-  await authModel.deleteEmailToken(tokenHash);
+  await authModel.setUserAsVerified(res.id);
+  await authModel.deleteEmailToken(res.id);
 };

@@ -9,6 +9,6 @@ router.post('/register', authController.register);
 router.post('/login', authController.login);
 
 // Route pour la vérification de l'email
-router.post('/verify-email', authController.verifyEmail);
+router.get('/verify-email', authController.verifyEmail);
 
 module.exports = router;

@@ -25,9 +25,10 @@ exports.login = async (req, res) => {
 // Vérification de l'email
 exports.verifyEmail = async (req, res) => {
   try {
-    const { token } = req.body;
-    const user = await authService.verifyEmailToken(token);
-    res.status(200).json({ message: 'Email verified successfully', user });
+    console.log('Received email verification request:', req.query);
+    const { token } = req.query;
+    await authService.verifyEmailToken(token);
+    res.status(200).json({ message: 'Email verified successfully!' });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
