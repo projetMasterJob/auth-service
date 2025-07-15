@@ -27,8 +27,8 @@ exports.registerUser = async (first_name, last_name, email, password, address, p
 
   // Envoi de l'email de validation
   const validationUrl = `${process.env.URL_VERIFY}/verify-email?token=${emailToken}`;
-  await mailer.sendValidationEmail(newUser.email, validationUrl);
-  console.log('Validation email sent to:', newUser.email);
+  await mailer.sendValidationEmail(email, validationUrl);
+  console.log('Validation email sent to:', email);
 };
 
 exports.loginUser = async (email, password) => {
