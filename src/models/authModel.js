@@ -64,3 +64,32 @@ exports.setUserAsVerified = async (userId) => {
   const result = await pool.query(query, [userId]);
   return result.rowCount;
 }
+
+exports.setResetToken = async (userId, resetTokenHash, expiresAt) => {
+  const query = `
+    UPDATE users
+    SET reset_token = $1, reset_token_expires_at = $2
+    WHERE id = $3
+  `;
+  const result = await pool.query(query, [resetTokenHash, expiresAt, userId]);
+  return result.rowCount;
+}
+
+exports.findByResetToken = async (resetTokenHash) => {
+  const query = `
+    SELECT id, reset_token_expires_at FROM users
+    WHERE reset_token = $1
+  `;
+  const result = await pool.query(query, [resetTokenHash]);
+  return result.rows[0];
+}
+
+exports.updateUserPassword = async (userId, newPasswordHash) => {
+  const query = `
+    UPDATE users
+    SET password_hash = $1, reset_token = NULL, reset_token_expires_at = NULL
+    WHERE id = $2
+  `;
+  const result = await pool.query(query, [newPasswordHash, userId]);
+  return result.rowCount;
+}

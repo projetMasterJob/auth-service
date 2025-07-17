@@ -26,7 +26,7 @@ exports.registerUser = async (first_name, last_name, email, password, address, p
   console.log('User created successfully:', newUser);
 
   // Envoi de l'email de validation
-  const validationUrl = `${process.env.URL_VERIFY}/verify-email?token=${emailToken}`;
+  const validationUrl = `${process.env.URL_AUTH}/verify-email?token=${emailToken}`;
   await mailer.sendValidationEmail(email, validationUrl);
   console.log('Validation email sent to:', email);
 };
@@ -71,3 +71,32 @@ exports.verifyEmailToken = async (token) => {
   await authModel.setUserAsVerified(res.id);
   await authModel.deleteEmailToken(res.id);
 };
+
+// Demande de réinitialisation du mot de passe
+exports.requestPasswordReset  = async (email) => {
+  const user = await authModel.findByEmail(email);
+  if (!user) return;
+
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1h
+
+  await authModel.setResetToken(user.id, resetTokenHash, expiresAt);
+
+  const resetUrl = `${process.env.URL_AUTH}/reset-password?token=${resetToken}`;
+  await mailer.sendResetPasswordEmail(email, resetUrl);
+}
+
+// Réinitialisation du mot de passe
+exports.resetPassword = async (token, newPassword) => {
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  const user = await authModel.findByResetToken(tokenHash);
+
+  if (!user || user.reset_password_expires_at < new Date()) {
+    throw new Error('Token invalide ou expiré');
+  }
+
+  const newHash = await bcrypt.hash(newPassword, 10);
+  await authModel.updateUserPassword(user.id, newHash);
+  await authModel.clearResetToken(user.id);
+}

@@ -11,4 +11,10 @@ router.post('/login', authController.login);
 // Route pour la vérification de l'email
 router.get('/verify-email', authController.verifyEmail);
 
+// Route pour la demande de réinitialisation du mot de passe
+router.post('/request-password', authController.requestPasswordReset );
+
+// Route pour la réinitialisation du mot de passe
+router.post('/reset-password', authController.resetPassword);
+
 module.exports = router;

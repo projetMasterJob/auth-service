@@ -33,3 +33,15 @@ exports.sendValidationEmail = async (to, validationUrl) => {
   const html = `<p>Merci de cliquer <a href="${validationUrl}">ici</a> pour activer ton compte.</p>`;
   return exports.sendMail(to, subject, html);
 };
+
+// Envoi du mail de reset password
+exports.sendResetPasswordEmail = async (to, resetUrl) => {
+  const subject = "Réinitialisation de votre mot de passe";
+  const html = `
+    <p>Vous avez demandé la réinitialisation de votre mot de passe.</p>
+    <p>Pour choisir un nouveau mot de passe, cliquez <a href="${resetUrl}">ici</a>.<br>
+    Si vous n'avez pas fait cette demande, ignorez cet e-mail.</p>
+    <p>Ce lien expirera dans 1 heure.</p>
+  `;
+  return exports.sendMail(to, subject, html);
+};
