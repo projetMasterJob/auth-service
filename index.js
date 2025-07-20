@@ -2,10 +2,17 @@ const app = require('./src/app');
 const dotenv = require('dotenv');
 dotenv.config();
 
-const PORT = process.env.PORT || 3000;
+const db = require('./src/config/dbConfig');
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+const PORT = process.env.PORT || 5000;
 
-//utiliser un revserse proxy pour le déploiement
+db.connect()
+  .then(() => {
+    console.log('Connected to the database');
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+  })
+  .catch(err => {
+    console.error('Database connection error:', err);
+  });
