@@ -3,22 +3,39 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const authToken = require('../middlewares/authToken');
 const mailer = require('../utils/mailer');
+const validator = require('validator');
 
 exports.registerUser = async (first_name, last_name, email, password, address, phone) => {
-  //là il faut faire appel au modèle
+  // Vérification du format de l'email
+  if (!validator.isEmail(email)) {
+    throw new Error('Adresse email invalide');
+  }
+
+  // Vérification de la longueur et de la complexité du mot de passe
+  if (typeof password !== "string" || password.length < 6) {
+    throw new Error('Le mot de passe doit contenir au moins 6 caractères');
+  }
+  // Complexité : minuscule, majuscule, chiffre, caractère spécial (exemple)
+  const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/;
+  if (!strongPasswordRegex.test(password)) {
+    throw new Error("Le mot de passe doit contenir une majuscule, une minuscule, un chiffre et un caractère spécial");
+  }
+
+  // Vérifie si l'utilisateur existe déjà
   const existingUser = await authModel.findByEmail(email);
   if (existingUser) {
     throw new Error('Email already exists');
   }
 
+  // Hachage du mot de passe
   const password_hash = await bcrypt.hash(password, 10);
-  console.log('Password hashed successfully');
 
+  // Génération du token de validation de l'email
   const emailToken = crypto.randomBytes(32).toString('hex');
   const emailTokenHash = crypto.createHash('sha256').update(emailToken).digest('hex');
   const tokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  console.log('Email token generated:', emailToken);
   
+  // Création de l'utilisateur dans la base de données
   const newUser = await authModel.createUser(first_name, last_name, email, password_hash, address, phone, emailTokenHash ,tokenExpiresAt);
   if(!newUser) {
     throw new Error('Error while creating user');
@@ -32,27 +49,32 @@ exports.registerUser = async (first_name, last_name, email, password, address, p
 };
 
 exports.loginUser = async (email, password) => {
+  // Vérifie si l'utilisateur existe
   const user = await authModel.findByEmail(email);
   if (!user) {
     throw new Error('Cannot find user');
   }
 
+  // Vérifie le mot de passe
   const validPassword = await bcrypt.compare(password, user.password_hash);
   if (!validPassword) {
     throw new Error('Invalid credentials');
   }
 
-  console.log('verified user:', user.is_verified);
+  // Vérifie si le compte est vérifié
   if (!user.is_verified) {
     throw new Error('Email not verified');
   }
 
+  // Génération des tokens JWT
   const accessToken = authToken.generateAccessToken(user);
   const refreshToken = authToken.generateRefreshToken(user);
 
+  // Hachage du refresh token pour le stocker en base de données
   const refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
   const addRefreshToken = await authModel.insertRefreshToken(refreshTokenHash, user.id);
 
+  // Vérification de l'ajout du refresh token
   if (addRefreshToken === 0) {
     throw new Error('Error while updating refresh token');
   }
@@ -64,11 +86,8 @@ exports.loginUser = async (email, password) => {
 };
 
 exports.verifyEmailToken = async (token) => {
-  console.log('Verifying email token:', token);
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-  console.log('Verifying email token:', tokenHash);
   const res = await authModel.findByEmailToken(tokenHash);
-  console.log('Token verification result:', res);
   if (!res) {
     throw new Error('Invalid or expired token');
   }
