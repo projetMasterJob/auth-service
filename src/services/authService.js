@@ -42,6 +42,11 @@ exports.loginUser = async (email, password) => {
     throw new Error('Invalid credentials');
   }
 
+  console.log('verified user:', user.is_verified);
+  if (!user.is_verified) {
+    throw new Error('Email not verified');
+  }
+
   const accessToken = authToken.generateAccessToken(user);
   const refreshToken = authToken.generateRefreshToken(user);
 

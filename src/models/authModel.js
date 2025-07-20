@@ -1,7 +1,7 @@
 const pool = require('../config/dbConfig');
 
 exports.findByEmail = async (email) => {
-  const query = 'SELECT id, password_hash FROM users WHERE email = $1';
+  const query = 'SELECT id, password_hash, is_verified FROM users WHERE email = $1';
   const result = await pool.query(query, [email]);
   return result.rows[0];
 };
