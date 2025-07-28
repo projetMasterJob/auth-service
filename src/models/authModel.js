@@ -78,7 +78,7 @@ exports.setResetToken = async (userId, resetTokenHash, expiresAt) => {
 exports.findByResetToken = async (resetTokenHash) => {
   const query = `
     SELECT id, reset_token_expires_at FROM users
-    WHERE reset_token = $1
+    WHERE reset_token = $1 AND reset_token_expires_at > NOW()
   `;
   const result = await pool.query(query, [resetTokenHash]);
   return result.rows[0];

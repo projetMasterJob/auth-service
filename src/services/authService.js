@@ -122,5 +122,4 @@ exports.resetPassword = async (token, newPassword) => {
 
   const newHash = await bcrypt.hash(newPassword, 10);
   await authModel.updateUserPassword(user.id, newHash);
-  await authModel.clearResetToken(user.id);
 }
