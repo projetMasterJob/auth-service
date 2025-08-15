@@ -52,7 +52,7 @@ exports.registerUser = async (first_name, last_name, email, password, address, p
   const tokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
   
   // Création de l'utilisateur dans la base de données
-  const newUser = await authModel.createUser(first_name, last_name, email, password_hash, address, phone, emailTokenHash ,tokenExpiresAt);
+  const newUser = await authModel.createUser(first_name, last_name, email, password_hash, address, phone, role, emailTokenHash ,tokenExpiresAt);
   if(!newUser) {
     throw new Error('Error while creating user');
   }
