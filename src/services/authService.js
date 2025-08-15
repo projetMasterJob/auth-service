@@ -5,7 +5,7 @@ const authToken = require('../middlewares/authToken');
 const mailer = require('../utils/mailer');
 const validator = require('validator');
 
-exports.registerUser = async (first_name, last_name, email, password, address, phone) => {
+exports.registerUser = async (first_name, last_name, email, password, address, phone, role, company) => {
   // Vérification du format de l'email
   if (!validator.isEmail(email)) {
     throw new Error('Adresse email invalide');
@@ -19,6 +19,22 @@ exports.registerUser = async (first_name, last_name, email, password, address, p
   const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/;
   if (!strongPasswordRegex.test(password)) {
     throw new Error("Le mot de passe doit contenir une majuscule, une minuscule, un chiffre et un caractère spécial");
+  }
+
+  // Vérification du rôle
+  if (role !== 'user' && role !== 'pro') {
+    throw new Error("Rôle invalide (attendu: 'user' ou 'pro')");
+  }
+
+  // Vérification des informations de l'entreprise
+  if (role === 'pro') {
+    if (!company) throw new Error('Les informations entreprise sont requises pour role=pro');
+    if (!company.name || !company.description || !company.website) {
+      throw new Error('Champs entreprise manquants: name, description et website sont requis');
+    }
+    if (!validator.isURL(company.website, { require_protocol: true })) {
+      throw new Error("URL du site entreprise invalide (ex: https://exemple.com)");
+    }
   }
 
   // Vérifie si l'utilisateur existe déjà
@@ -41,6 +57,15 @@ exports.registerUser = async (first_name, last_name, email, password, address, p
     throw new Error('Error while creating user');
   }
   console.log('User created successfully:', newUser);
+
+  // Enregistrement des informations de l'entreprise
+  if(role === 'pro') {
+    const companyData = await authModel.createCompany(newUser.id, company);
+    if(!companyData) {
+      throw new Error('Error while creating company');
+    }
+    console.log('Company created successfully:', companyData);
+  }
 
   // Envoi de l'email de validation
   const validationUrl = `${process.env.URL_AUTH}/verify-email?token=${emailToken}`;

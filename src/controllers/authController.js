@@ -1,15 +1,17 @@
 const authService = require('../services/authService');
 
+// Inscription d'un nouvel utilisateur
 exports.register = async (req, res) => {
   try {
-    const { first_name, last_name, email, password, address, phone, role } = req.body;
-    await authService.registerUser(first_name, last_name, email, password, address, phone, role);
+    const { first_name, last_name, email, password, address, phone, role, company } = req.body;
+    await authService.registerUser(first_name, last_name, email, password, address, phone, role, company);
     res.status(201).json({ message: 'User registered successfully' });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 };
 
+// Connexion d'un utilisateur existant
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;

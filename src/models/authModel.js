@@ -16,6 +16,16 @@ exports.createUser = async(first_name, last_name, email, password_hash, address,
   return result.rows[0];
 };
 
+exports.createCompany = async (userId, company) => {
+  const query = `
+    INSERT INTO companies (user_id, name, description, website, created_at)
+    VALUES ($1, $2, $3, $4, NOW())
+    RETURNING id
+  `;
+  const result = await pool.query(query, [userId, company.name, company.description, company.website]);
+  return result.rows[0];
+};
+
 exports.insertRefreshToken = async (refreshToken, userId) => {
   const query = `
     UPDATE users
