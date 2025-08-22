@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest --runInBand",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage",
     "dev": "nodemon index.js"
   },
   "author": "",
@@ -20,5 +22,9 @@
     "nodemon": "^3.1.10",
     "pg": "^8.16.2",
     "validator": "^13.15.15"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "jest": "^30.0.5"
   }
 }
