@@ -16,7 +16,7 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
     const { accessToken, refreshToken } = await authService.loginUser(email, password);
-    res.status(200).json({ accessToken: accessToken });
+    res.status(200).json({ accessToken: accessToken, refreshToken: refreshToken });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -25,7 +25,6 @@ exports.login = async (req, res) => {
 // Vérification de l'email
 exports.verifyEmail = async (req, res) => {
   try {
-    console.log('Received email verification request:', req.query);
     const { token } = req.query;
     await authService.verifyEmailToken(token);
     res.status(200).json({ message: 'Email verified successfully!' });
@@ -49,10 +48,20 @@ exports.requestPasswordReset  = async (req, res) => {
 exports.resetPassword = async (req, res) => {
   try {
     const { token, newPassword } = req.body;
-    console.log('Received password reset request:', req.body);
     await authService.resetPassword(token, newPassword);
     res.status(200).json({ message: 'Password updated successfully!' });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 }
+
+// Rafraîchissement du token
+exports.refreshToken = async (req, res) => {
+  try {
+    const { token } = req.body;
+    const { accessToken, refreshToken } = await authService.refreshToken(token);
+    res.status(200).json({ accessToken: accessToken, refreshToken: refreshToken });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};

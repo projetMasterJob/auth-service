@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 exports.generateAccessToken = (user) => {
   return jwt.sign(
@@ -9,10 +10,11 @@ exports.generateAccessToken = (user) => {
 };
 
 exports.generateRefreshToken = (user) => {
+  const jti = crypto.randomBytes(16).toString('base64url');
   return jwt.sign(
-    { id: user.id, role: user.role },
+    { sub: user.id, jti, typ: 'refresh' },
     process.env.JWT_REFRESH_SECRET,
-    { expiresIn: '7d' }
+    { expiresIn: '45d', issuer: 'jobazur' }
   );
 };
 
@@ -28,3 +30,6 @@ exports.authenticateToken = (req, res, next) => {
     next();
   });
 };
+
+exports.hash = (value) =>
+  crypto.createHash('sha256').update(value).digest('hex');
