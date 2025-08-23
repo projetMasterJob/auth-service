@@ -10,6 +10,7 @@ jest.mock('../../src/services/authService', () => ({
   verifyEmailToken: jest.fn(),
   requestPasswordReset: jest.fn(),
   resetPassword: jest.fn(),
+  refreshToken: jest.fn(),
 }));
 
 const authService = require('../../src/services/authService');
@@ -81,7 +82,7 @@ describe('authController.login', () => {
     expect(authService.loginUser).toHaveBeenCalledWith('ada@example.com', 'Secret123!');
     expect(res.status).toHaveBeenCalledWith(200);
     // le controller ne renvoie que accessToken (pas le refreshToken)
-    expect(res.json).toHaveBeenCalledWith({ accessToken: 'acc123' });
+    expect(res.json).toHaveBeenCalledWith({ accessToken: 'acc123', refreshToken: 'ref456' });
   });
 
   test('400 + message si service lève une erreur', async () => {
@@ -166,4 +167,70 @@ describe('authController.resetPassword', () => {
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({ message: 'Invalid token' });
   });
+
+  describe('authController.refreshToken', () => {
+    const makeRes = () => {
+      const res = {};
+      res.status = jest.fn(() => res);
+      res.json = jest.fn(() => res);
+      return res;
+    };
+
+    afterEach(() => jest.clearAllMocks());
+
+    test('200 → retourne accessToken et refreshToken', async () => {
+      authService.refreshToken.mockResolvedValue({
+        accessToken: 'acc.ok',
+        refreshToken: 'ref.new',
+      });
+      const req = { body: { token: 'ref.valid' } };
+      const res = makeRes();
+
+      await controller.refreshToken(req, res);
+
+      expect(authService.refreshToken).toHaveBeenCalledWith('ref.valid');
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({ accessToken: 'acc.ok', refreshToken: 'ref.new' });
+    });
+
+    test('400 → body sans token', async () => {
+      const req = { body: {} };
+      const res = makeRes();
+
+      await controller.refreshToken(req, res);
+
+      expect(authService.refreshToken).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Missing refreshToken' });
+    });
+
+    test('401 → refresh expiré', async () => {
+      const err = new Error('RefreshExpired');
+      err.code = 'REFRESH_EXPIRED';
+      authService.refreshToken.mockRejectedValue(err);
+
+      const req = { body: { token: 'ref.expired' } };
+      const res = makeRes();
+
+      await controller.refreshToken(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.json).toHaveBeenCalledWith({ error: 'RefreshExpired' });
+    });
+
+    test('401 → refresh invalide/mismatch', async () => {
+      const err = new Error('Invalid refresh token');
+      err.code = 'REFRESH_INVALID';
+      authService.refreshToken.mockRejectedValue(err);
+
+      const req = { body: { token: 'ref.bad' } };
+      const res = makeRes();
+
+      await controller.refreshToken(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Invalid refresh token' });
+    });
+  });
+
 });

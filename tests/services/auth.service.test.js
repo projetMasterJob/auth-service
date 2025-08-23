@@ -11,6 +11,8 @@ jest.mock('../../src/models/authModel', () => ({
   setResetToken: jest.fn(),
   findByResetToken: jest.fn(),
   updateUserPassword: jest.fn(),
+  findById: jest.fn(),
+  updateUserJwtToken: jest.fn(),
 }));
 
 jest.mock('bcrypt', () => ({
@@ -18,18 +20,30 @@ jest.mock('bcrypt', () => ({
   compare: jest.fn(async () => true),
 }));
 
-// On force crypto pour contrôler les tokens et les hash
 const mockUpdate = jest.fn().mockReturnThis();
 const mockDigest = jest.fn(() => 'sha256(<input>)');
-jest.mock('crypto', () => ({
-  randomBytes: jest.fn(() => Buffer.from('a1b2', 'hex')), // => "a1b2"
-  createHash: jest.fn(() => ({ update: mockUpdate, digest: mockDigest })),
-}));
 
-jest.mock('../../src/middlewares/authToken', () => ({
-  generateAccessToken: jest.fn(() => 'access.jwt'),
-  generateRefreshToken: jest.fn(() => 'refresh.jwt'),
-}));
+jest.mock('crypto', () => {
+  const randomBytes = jest.fn(() => Buffer.from('a1b2', 'hex')); // => "a1b2"
+  const createHash = jest.fn(() => ({ update: mockUpdate, digest: mockDigest }));
+  // Supporte require('crypto') ET import crypto from 'crypto'
+  return {
+    __esModule: true,
+    randomBytes,
+    createHash,
+    default: { randomBytes, createHash },
+  };
+});
+
+jest.mock('../../src/middlewares/authToken', () => {
+  const crypto = require('crypto');
+  return {
+    generateAccessToken: jest.fn(() => 'access.jwt'),
+    generateRefreshToken: jest.fn(() => 'refresh.jwt'),
+    hash: (v) => crypto.createHash('sha256').update(v).digest('hex'),
+    verifyRefreshToken: jest.fn((token) => ({ sub: 42, typ: 'refresh' })),
+  };
+});
 
 jest.mock('../../src/utils/mailer', () => ({
   sendValidationEmail: jest.fn(async () => {}),
@@ -317,6 +331,103 @@ describe('authService', () => {
       expect(crypto.createHash).toHaveBeenCalledWith('sha256');
       expect(bcrypt.hash).toHaveBeenCalledWith('NewPass1!', 10);
       expect(authModel.updateUserPassword).toHaveBeenCalledWith(10, 'hashed(NewPass1!)');
+    });
+  });
+
+  // ---------------- REFRESH TOKEN ----------------
+  describe('refreshToken (service)', () => {
+    const TOKEN_IN = 'ref.token.any';
+    const HASHED = 'sha256(<input>)'; // cohérent avec le mock de crypto
+
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
+
+    test('succès : vérifie, match le hash, génère & rotate', async () => {
+      // verify OK
+      authToken.verifyRefreshToken.mockReturnValueOnce({ sub: 123, typ: 'refresh' });
+      // user avec hash en base qui matche
+      authModel.findById.mockResolvedValueOnce({ id: 123, jwt_token: HASHED, role: 'user' });
+      // update OK
+      authModel.updateUserJwtToken.mockResolvedValueOnce(1);
+
+      const out = await service.refreshToken(TOKEN_IN);
+
+      // vérifications
+      expect(authToken.verifyRefreshToken).toHaveBeenCalledWith(TOKEN_IN);
+      expect(authModel.findById).toHaveBeenCalledWith(123);
+      // on a bien re-hashé l'ancien token reçu
+      const crypto = require('crypto');
+      expect(crypto.createHash).toHaveBeenCalledWith('sha256');
+
+      expect(authToken.generateAccessToken).toHaveBeenCalled();
+      expect(authToken.generateRefreshToken).toHaveBeenCalled();
+
+      // rotation : nouveau hash persisté
+      expect(authModel.updateUserJwtToken).toHaveBeenCalledWith(123, HASHED);
+
+      expect(out).toEqual({ accessToken: 'access.jwt', refreshToken: 'refresh.jwt' });
+    });
+
+    test('REFRESH_EXPIRED : verify lève TokenExpiredError', async () => {
+      const e = new Error('jwt expired');
+      e.name = 'TokenExpiredError';
+      authToken.verifyRefreshToken.mockImplementationOnce(() => { throw e; });
+
+      await expect(service.refreshToken(TOKEN_IN)).rejects.toMatchObject({
+        message: 'RefreshExpired',
+        code: 'REFRESH_EXPIRED',
+      });
+    });
+
+    test('REFRESH_INVALID : verify lève autre erreur', async () => {
+      authToken.verifyRefreshToken.mockImplementationOnce(() => { throw new Error('bad'); });
+
+      await expect(service.refreshToken(TOKEN_IN)).rejects.toMatchObject({
+        message: 'Invalid refresh token',
+        code: 'REFRESH_INVALID',
+      });
+    });
+
+    test('REFRESH_INVALID : payload typ != refresh', async () => {
+      authToken.verifyRefreshToken.mockReturnValueOnce({ sub: 1, typ: 'access' });
+
+      await expect(service.refreshToken(TOKEN_IN)).rejects.toMatchObject({
+        message: 'Invalid refresh token',
+        code: 'REFRESH_INVALID',
+      });
+    });
+
+    test('REFRESH_INVALID : user introuvable', async () => {
+      authToken.verifyRefreshToken.mockReturnValueOnce({ sub: 999, typ: 'refresh' });
+      authModel.findById.mockResolvedValueOnce(null);
+
+      await expect(service.refreshToken(TOKEN_IN)).rejects.toMatchObject({
+        message: 'Invalid refresh token',
+        code: 'REFRESH_INVALID',
+      });
+    });
+
+    test('REFRESH_MISMATCH : hash différent', async () => {
+      authToken.verifyRefreshToken.mockReturnValueOnce({ sub: 7, typ: 'refresh' });
+      // hash en base ≠ hash(token entrant)
+      authModel.findById.mockResolvedValueOnce({ id: 7, jwt_token: 'not-matching' });
+
+      await expect(service.refreshToken(TOKEN_IN)).rejects.toMatchObject({
+        message: 'Invalid refresh token',
+        code: 'REFRESH_MISMATCH',
+      });
+    });
+
+    test('ROTATE_FAILED : updateUserJwtToken échoue', async () => {
+      authToken.verifyRefreshToken.mockReturnValueOnce({ sub: 1, typ: 'refresh' });
+      authModel.findById.mockResolvedValueOnce({ id: 1, jwt_token: HASHED });
+      authModel.updateUserJwtToken.mockResolvedValueOnce(0); // falsy
+
+      await expect(service.refreshToken(TOKEN_IN)).rejects.toMatchObject({
+        message: 'Failed to rotate refresh',
+        code: 'ROTATE_FAILED',
+      });
     });
   });
 });

@@ -1,6 +1,7 @@
 const authModel = require('../models/authModel');
 const bcrypt = require('bcrypt');
 const authToken = require('../middlewares/authToken');
+const crypto = require('crypto'); 
 const mailer = require('../utils/mailer');
 const validator = require('validator');
 
