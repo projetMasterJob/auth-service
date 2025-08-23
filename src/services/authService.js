@@ -1,10 +1,10 @@
 const authModel = require('../models/authModel');
 const bcrypt = require('bcrypt');
-const crypto = require('crypto');
 const authToken = require('../middlewares/authToken');
 const mailer = require('../utils/mailer');
 const validator = require('validator');
 
+// Inscription d'un nouvel utilisateur
 exports.registerUser = async (first_name, last_name, email, password, address, phone, role, company) => {
   // Vérification du format de l'email
   if (!validator.isEmail(email)) {
@@ -48,7 +48,7 @@ exports.registerUser = async (first_name, last_name, email, password, address, p
 
   // Génération du token de validation de l'email
   const emailToken = crypto.randomBytes(32).toString('hex');
-  const emailTokenHash = crypto.createHash('sha256').update(emailToken).digest('hex');
+  const emailTokenHash = authToken.hash(emailToken);
   const tokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
   
   // Création de l'utilisateur dans la base de données
@@ -64,15 +64,14 @@ exports.registerUser = async (first_name, last_name, email, password, address, p
     if(!companyData) {
       throw new Error('Error while creating company');
     }
-    console.log('Company created successfully:', companyData);
   }
 
   // Envoi de l'email de validation
   const validationUrl = `${process.env.URL_AUTH}/verify-email?token=${emailToken}`;
   await mailer.sendValidationEmail(email, validationUrl);
-  console.log('Validation email sent to:', email);
 };
 
+// Connexion d'un utilisateur existant
 exports.loginUser = async (email, password) => {
   // Vérifie si l'utilisateur existe
   const user = await authModel.findByEmail(email);
@@ -94,9 +93,9 @@ exports.loginUser = async (email, password) => {
   // Génération des tokens JWT
   const accessToken = authToken.generateAccessToken(user);
   const refreshToken = authToken.generateRefreshToken(user);
+  const refreshTokenHash = authToken.hash(refreshToken);
 
   // Hachage du refresh token pour le stocker en base de données
-  const refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
   const addRefreshToken = await authModel.insertRefreshToken(refreshTokenHash, user.id);
 
   // Vérification de l'ajout du refresh token
@@ -110,8 +109,9 @@ exports.loginUser = async (email, password) => {
   };
 };
 
+// Vérification du token de validation de l'email
 exports.verifyEmailToken = async (token) => {
-  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  const tokenHash = authToken.hash(token);
   const res = await authModel.findByEmailToken(tokenHash);
   if (!res) {
     throw new Error('Invalid or expired token');
@@ -127,7 +127,7 @@ exports.requestPasswordReset  = async (email) => {
   if (!user) return;
 
   const resetToken = crypto.randomBytes(32).toString('hex');
-  const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+  const resetTokenHash = authToken.hash(resetToken);
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1h
 
   await authModel.setResetToken(user.id, resetTokenHash, expiresAt);
@@ -138,7 +138,7 @@ exports.requestPasswordReset  = async (email) => {
 
 // Réinitialisation du mot de passe
 exports.resetPassword = async (token, newPassword) => {
-  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  const tokenHash = authToken.hash(token);
   const user = await authModel.findByResetToken(tokenHash);
 
   if (!user || user.reset_password_expires_at < new Date()) {
@@ -148,3 +148,40 @@ exports.resetPassword = async (token, newPassword) => {
   const newHash = await bcrypt.hash(newPassword, 10);
   await authModel.updateUserPassword(user.id, newHash);
 }
+
+// Rafraîchissement du token
+exports.refreshToken = async (token) => {
+  let payload;
+
+  try {
+    payload = authToken.verifyRefreshToken(token);
+    if (payload.typ !== 'refresh') throw new Error('Wrong token type');
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      const e = new Error('RefreshExpired'); e.code = 'REFRESH_EXPIRED'; throw e;
+    }
+    const e = new Error('Invalid refresh token'); e.code = 'REFRESH_INVALID'; throw e;
+  }
+
+  const user = await authModel.findById(payload.sub);
+  if (!user) {
+    const e = new Error('Invalid refresh token'); e.code = 'REFRESH_INVALID'; throw e;
+  }
+
+  const hash = authToken.hash(token);
+  if (!user.jwt_token || user.jwt_token !== hash) {
+    const e = new Error('Invalid refresh token'); e.code = 'REFRESH_MISMATCH'; throw e;
+  }
+
+  // OK → rotation
+  const accessToken = authToken.generateAccessToken(user);
+  const newRefresh = authToken.generateRefreshToken(user);
+  const newHash = authToken.hash(newRefresh);
+
+  const updated = await authModel.updateUserJwtToken(user.id, newHash);
+  if (!updated) {
+    const e = new Error('Failed to rotate refresh'); e.code = 'ROTATE_FAILED'; throw e;
+  }
+
+  return { accessToken, refreshToken: newRefresh };
+};

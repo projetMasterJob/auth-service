@@ -17,4 +17,7 @@ router.post('/request-password', authController.requestPasswordReset );
 // Route pour la réinitialisation du mot de passe
 router.post('/reset-password', authController.resetPassword);
 
+// Route pour le rafraîchissement du token
+router.post('/refresh-token', authController.refreshToken);
+
 module.exports = router;

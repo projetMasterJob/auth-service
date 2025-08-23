@@ -103,3 +103,19 @@ exports.updateUserPassword = async (userId, newPasswordHash) => {
   const result = await pool.query(query, [newPasswordHash, userId]);
   return result.rowCount;
 }
+
+exports.findById = async (id) => {
+  const query = 'SELECT id, email, role, jwt_token FROM users WHERE id = $1';
+  const result = await pool.query(query, [id]);
+  return result.rows[0];
+};
+
+exports.updateUserJwtToken = async (userId, newRefreshTokenHash) => {
+  const query = `
+    UPDATE users
+    SET jwt_token = $1
+    WHERE id = $2
+  `;
+  const result = await pool.query(query, [newRefreshTokenHash, userId]);
+  return result.rowCount === 1;
+};
