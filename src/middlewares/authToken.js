@@ -14,7 +14,7 @@ exports.generateRefreshToken = (user) => {
   return jwt.sign(
     { sub: user.id, jti, typ: 'refresh' },
     process.env.JWT_REFRESH_SECRET,
-    { expiresIn: '45d', issuer: 'jobazur' }
+    { expiresIn: '7d', issuer: 'jobazur' }
   );
 };
 
@@ -33,3 +33,13 @@ exports.authenticateToken = (req, res, next) => {
 
 exports.hash = (value) =>
   crypto.createHash('sha256').update(value).digest('hex');
+
+exports.verifyRefreshToken = (token) => {
+  try {
+    const payload = jwt.verify(token, process.env.JWT_REFRESH_SECRET, { issuer: 'jobazur' });
+    return payload;
+  } catch (err) {
+    console.error('Failed to verify refresh token:', err);
+    return null;
+  }
+};

@@ -57,11 +57,14 @@ exports.resetPassword = async (req, res) => {
 
 // Rafraîchissement du token
 exports.refreshToken = async (req, res) => {
+  const token = req.body?.token;
+  if (!token) return res.status(400).json({ error: 'Missing refreshToken' });
+
   try {
-    const { token } = req.body;
     const { accessToken, refreshToken } = await authService.refreshToken(token);
-    res.status(200).json({ accessToken: accessToken, refreshToken: refreshToken });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
+    return res.status(200).json({ accessToken, refreshToken });
+  } catch (err) {
+    if (err.code === 'REFRESH_EXPIRED') return res.status(401).json({ error: 'RefreshExpired' });
+    return res.status(401).json({ error: 'Invalid refresh token' });
   }
 };

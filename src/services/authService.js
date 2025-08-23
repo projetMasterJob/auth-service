@@ -152,21 +152,25 @@ exports.resetPassword = async (token, newPassword) => {
 // Rafraîchissement du token
 exports.refreshToken = async (token) => {
   let payload;
-  
+
   try {
-    payload = jwt.verify(token, process.env.JWT_REFRESH_SECRET, { issuer: 'jobazur' });
+    payload = authToken.verifyRefreshToken(token);
     if (payload.typ !== 'refresh') throw new Error('Wrong token type');
-  } catch {
-    return res.status(401).json({ error: 'Invalid refresh token' });
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      const e = new Error('RefreshExpired'); e.code = 'REFRESH_EXPIRED'; throw e;
+    }
+    const e = new Error('Invalid refresh token'); e.code = 'REFRESH_INVALID'; throw e;
   }
 
   const user = await authModel.findById(payload.sub);
-  if (!user) return res.status(401).json({ error: 'Invalid refresh token' });
+  if (!user) {
+    const e = new Error('Invalid refresh token'); e.code = 'REFRESH_INVALID'; throw e;
+  }
 
   const hash = authToken.hash(token);
   if (!user.jwt_token || user.jwt_token !== hash) {
-    // => pas le dernier refresh connu (déjà rotaté / révoqué / volé)
-    return res.status(401).json({ error: 'Invalid refresh token' });
+    const e = new Error('Invalid refresh token'); e.code = 'REFRESH_MISMATCH'; throw e;
   }
 
   // OK → rotation
@@ -174,7 +178,10 @@ exports.refreshToken = async (token) => {
   const newRefresh = authToken.generateRefreshToken(user);
   const newHash = authToken.hash(newRefresh);
 
-  await authModel.updateUserJwtToken(user.id, newHash);
+  const updated = await authModel.updateUserJwtToken(user.id, newHash);
+  if (!updated) {
+    const e = new Error('Failed to rotate refresh'); e.code = 'ROTATE_FAILED'; throw e;
+  }
 
-  return res.json({ accessToken, refreshToken: newRefresh });
+  return { accessToken, refreshToken: newRefresh };
 };
