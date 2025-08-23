@@ -25,28 +25,28 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>33/33</span>
+                <span class='fraction'>41/41</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/0</span>
+                <span class='fraction'>4/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>5/5</span>
+                <span class='fraction'>6/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>33/33</span>
+                <span class='fraction'>39/39</span>
             </div>
         
             
@@ -120,7 +120,19 @@
 <a name='L55'></a><a href='#L55'>55</a>
 <a name='L56'></a><a href='#L56'>56</a>
 <a name='L57'></a><a href='#L57'>57</a>
-<a name='L58'></a><a href='#L58'>58</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
@@ -149,7 +161,6 @@
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
@@ -172,9 +183,22 @@
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">const authService = require('../services/authService');
@@ -195,7 +219,7 @@ exports.login = async (req, res) =&gt; {
   try {
     const { email, password } = req.body;
     const { accessToken, refreshToken } = await authService.loginUser(email, password);
-    res.status(200).json({ accessToken: accessToken });
+    res.status(200).json({ accessToken: accessToken, refreshToken: refreshToken });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -204,7 +228,6 @@ exports.login = async (req, res) =&gt; {
 // Vérification de l'email
 exports.verifyEmail = async (req, res) =&gt; {
   try {
-    console.log('Received email verification request:', req.query);
     const { token } = req.query;
     await authService.verifyEmailToken(token);
     res.status(200).json({ message: 'Email verified successfully!' });
@@ -228,20 +251,33 @@ exports.requestPasswordReset  = async (req, res) =&gt; {
 exports.resetPassword = async (req, res) =&gt; {
   try {
     const { token, newPassword } = req.body;
-    console.log('Received password reset request:', req.body);
     await authService.resetPassword(token, newPassword);
     res.status(200).json({ message: 'Password updated successfully!' });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
-}</pre></td></tr></table></pre>
+}
+&nbsp;
+// Rafraîchissement du token
+exports.refreshToken = async (req, res) =&gt; {
+  const token = req.body?.token;
+  if (!token) return res.status(400).json({ error: 'Missing refreshToken' });
+&nbsp;
+  try {
+    const { accessToken, refreshToken } = await authService.refreshToken(token);
+    return res.status(200).json({ accessToken, refreshToken });
+  } catch (err) {
+    if (err.code === 'REFRESH_EXPIRED') return res.status(401).json({ error: 'RefreshExpired' });
+    return res.status(401).json({ error: 'Invalid refresh token' });
+  }
+};</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
             </div><!-- /wrapper -->
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-08-18T17:22:04.418Z
+                at 2025-08-23T11:20:23.540Z
             </div>
         <script src="../prettify.js"></script>
         <script>
