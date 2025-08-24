@@ -3,6 +3,7 @@ const mailjet = require('node-mailjet').apiConnect(
   process.env.MJ_APIKEY_PRIVATE
 );
 
+// Fonction générique pour envoyer un email
 exports.sendMail = async (to, subject, html) => {
   return mailjet
     .post('send', { version: 'v3.1' })
@@ -11,7 +12,7 @@ exports.sendMail = async (to, subject, html) => {
         {
           From: {
             Email: process.env.MAIL_USER,
-            Name: "Ton App"
+            Name: "JobAzur"
           },
           To: [
             {
