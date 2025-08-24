@@ -20,7 +20,7 @@ npm install
 
 ### 4. Configuration de l’environnement
 Créer un fichier `.env` à la racine du projet avec les variables suivantes :
-
+```env
 URL_AUTH=http://localhost:3000
 JWT_REFRESH_SECRET=your_refresh_secret
 JWT_SECRET=your_jwt_secret
