@@ -32,7 +32,7 @@ DB_PORT=5432
 PORT=3000
 MJ_APIKEY_PUBLIC=your_mailjet_public_key
 MJ_APIKEY_PRIVATE=your_mailjet_private_key
-
+```
 
 **Attention** : ne jamais commiter ce fichier `.env` dans le dépôt Git.
 
